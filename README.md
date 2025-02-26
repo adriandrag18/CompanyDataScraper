@@ -20,13 +20,11 @@ How I actually built it—tools, decisions, and trade-offs.
 
 ### Step 1: Data Extraction (Scraping Part)
 
-Tools: Python with requests (fetch pages), beautifulsoup4 (parse HTML), pandas (load CSV).
-Approach:
-Load sample-websites.csv into a list.
+- **Tools**: Python with requests (fetch pages), beautifulsoup4 (parse HTML), pandas (load CSV).
+- **Approach**: Load sample-websites.csv into a list.
 Scrape each site for phone numbers (regex), social links (\<a> tags), and optionally addresses (keyword heuristic).
 Save to scraped_data.json.
-Decisions:
-Chose BeautifulSoup over Scrapy for simplicity since it’s a small list initially.
+- **Decisions**: Chose BeautifulSoup over Scrapy for simplicity since it’s a small list initially.
 Basic regex for phones (\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b) to catch common formats.
 Error handling to skip failed requests gracefully.
 Status: In progress—tested with 5 sites, refining extraction logic next.
@@ -41,16 +39,25 @@ Status: In progress—tested with 5 sites, refining extraction logic next.
 
 ### Step 4: Data Retrieval (Storing Part)
 
-(To be filled as I complete this step)
+- **Tools**: Python, Elasticsearch, Pandas
+- **Approach**: Merge scraped data (scrapedData.json) with websites-company-names.csv on 'website' and 'domain'. Store in Elasticsearch index 'company_profiles'.
+- **Decisions**: Used Pandas for merging due to familiarity; Elasticsearch for fast, fuzzy querying as recommended.
+- **Status**: Implemented—data indexed successfully.
 
 ### Step 5: Querying (API Part)
 
-(To be filled as I complete this step)
+- **Tools**: Python, FastAPI, Elasticsearch
+- **Approach**: Built a POST /api/match endpoint accepting name, website, phone, and facebook. Uses Elasticsearch bool query with fuzzy matching on 'all_names' for flexibility.
+- **Decisions**: Chose FastAPI over Node.js Express for consistency with Python scraping code and simpler setup for me. Fuzzy matching prioritizes name (via all_names) for broader coverage.
+- **Status**: Implemented—returns best match or error if none found.
+- **Motivation**: Sticking to Python reduces context-switching and leverages my existing Python knowledge for quicker iteration.
 
 ### Bonus: Match Accuracy
 
 (To be filled if I tackle this)
-Potential for Improvement
+
+### Potential for Improvement
+
 Where could this go with more time or resources?
 
 Scraping: Use Scrapy for async scraping or ML to detect data patterns dynamically.
@@ -64,35 +71,37 @@ First Impression: The initial scraper could miss complex sites (e.g., JavaScript
 
 Step-by-step instructions to set up and execute the project.
 
-Prerequisites
-Python 3.x
-Node.js (for API, TBD)
-Elasticsearch (TBD)
-Dependencies: pip install requests beautifulsoup4 pandas
+### Prerequisites
+
+- Python 3.9
+- Elasticsearch (running locally on port 9200) or
+- Docker (for Elasticsearch)
+- Dependencies: pip install -r requirements.txt
 
 ### Setup
 
 1. Clone the repo: `git clone <repo-url>`
-2. Place `sample-websites.csv` in the root directory.
-3. Create a virtual environment:
-
-   ```bash
-   python -m venv venv
-    ```
-
-4. Activate it Mac/Linux: `source venv/bin/activate`
-5. Install dependencies `pip install -r requiremets.txt`
+2. (Optional) Create a virtual environment and activate it: `python -m venv venv & source venv/bin/activate`
+3. Install dependencies `pip install -r requiremets.txt`
 
 #### Running the Scraper
 
-Run: python scrape.py
-Output: Check scraped_data.json for results.
+- `colima start` (remove)
+- Start Elasticsearch: `docker run -d -p 9200:9200 -e "ELASTIC_PASSWORD=myVerySecurePassword" elasticsearch:8.11.0`
+- Run: python scrape.py
+- Output: Check scrapedData.json for results and companyProfiles index in ES
 
 #### Running the API
 
-(To be filled once API is built)
+- Start Elasticsearch: `docker run -d -p 9200:9200 -e "ELASTIC_PASSWORD=myVerySecurePassword" elasticsearch:8.11.0`
+- Store data: `python store.py`
+- Run API: `python api.py`
+- Test: `curl -X POST "http://localhost:8000/api/match" -H "Content-Type: application/json" -d '{"name": "Greater Boston Zen Center"}'`
 
 ## Notes
 
-Current date: February 25, 2025
+- Date: February 25, 2025
 Time spent so far: ~1 hour (planning + initial scraper draft)
+
+- Date: February 26, 2025
+Time spent so far: ~3 hours (planning, scraper, storage, API)

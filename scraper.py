@@ -3,6 +3,9 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import re
 import json
+import os
+from clientElasticsearch import EsClient
+
 
 def scrapeWebsite(domain: str):
     url = f'http://{domain}'
@@ -18,6 +21,7 @@ def scrapeWebsite(domain: str):
         address = extractAddress(soup)
         
         return {
+            'domain': domain,
             'website': url,
             'phones': phones if phones else None,
             'socialLinks': socialLinks if socialLinks else None,
@@ -70,7 +74,29 @@ def main():
     with open('scrapedData.json', 'w') as f:
         json.dump(results, f, indent=2)
 
-    print("Scraping complete! Results saved to scraped_data.json")
+    print("Scraping complete! Results saved to scrapedData.json")
+
+    storeInEs = os.getenv('STORE_IN_ES', 'false').lower() == 'true'
+    if storeInEs:
+        esClient = EsClient()
+        companyDf = pd.read_csv('websites-company-names.csv')
+        mergedDf = pd.merge(
+            pd.DataFrame(results), companyDf, left_on='domain', right_on='domain', how='right'
+        ).replace({pd.NA: None, float('nan'): None})
+
+        for _, row in mergedDf.iterrows():
+            doc = {
+                'domain': domain,
+                'website': row['website'],
+                'phones': row['phones'],
+                'socialLinks': row['socialLinks'],
+                'address': row['address'],
+                'commercialName': row['company_commercial_name'],
+                'legalName': row['company_legal_name'],
+                'allNames': row['company_all_available_names']
+            }
+            esClient.index(index='companyProfiles', id=row['website'], body=doc)
+        print(f"Stored {esClient.count('companyProfiles')} documents in Elasticsearch")
 
 
 if __name__ == '__main__':

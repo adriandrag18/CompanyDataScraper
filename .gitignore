@@ -172,5 +172,6 @@ cython_debug/
 .pypirc
 
 colectCode.py
+project.txt
 scrapedData.json
 plan*
